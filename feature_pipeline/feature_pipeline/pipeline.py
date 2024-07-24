@@ -1,12 +1,25 @@
-from feature_pipeline import utils
-from feature_pipeline.etl import cleaning, load, extract, validation
-
 from typing import Optional
 import datetime
+import pandas as pd
+import fire
+
+from feature_pipeline import utils
+from feature_pipeline.etl import cleaning, load, extract, validation
 
 
 # Get a logger using the nam eof the executable
 logger = utils.get_logger(__name__)
+
+
+def transform(data: pd.DataFrame):
+    """ 
+    Wrapper containing all the transformation from the ETL pipeline
+    """
+    data = cleaning.rename_columns(data)
+    data = cleaning.cast_columns(data)
+    data = cleaning.encode_area_columns(data)
+
+    return data
 
 
 # Entry Point of the Feature Pipeline
@@ -41,3 +54,31 @@ def run(export_end_reference_datetime: Optional[datetime.datetime] = None,
     data, metadata = extract.from_file(
         export_end_reference_datetime, days_delay, days_export, url
     )
+    logger.info("Succesfully extracted data from API.")
+
+    logger.info("Trasnforming Data")
+    data = transform(data)
+    logger.info("Succesfully transformed data")
+
+    logger.info("Building validation expectation suite")
+    validation_expectation_suite = validation.build_expectation_suite()
+    logger.info("Successfully built validation expectation suite")
+
+    logger.info("Validating data and loading it ot the feature store")
+    load.to_feature_store(
+        data,
+        validation_expectation=validation_expectation_suite,
+        feature_group_version=feature_group_version,
+    )
+    metadata['feature_group_version'] = feature_group_version
+    logger.info("Successfully validated data and loaded it to the feature store")
+
+    logger.info("Wrapping up the pipeline")
+    utils.save_json(metadata, file_name="feature_pipeline_metadata.json")
+    logger.info("Done!")
+
+    return metadata
+
+
+if __name__:
+    fire.Fire(run)
