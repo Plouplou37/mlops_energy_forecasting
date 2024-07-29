@@ -1,0 +1,1 @@
+ML Platform: An ML platform is a tool that allows you to easily track your experiments, log metadata about your training, upload and version artifacts, data lineage and more. An ML platform is a must in any training pipeline. You can intuitively see an ML platform as your central research & experimentation hub
